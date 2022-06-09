@@ -1,0 +1,174 @@
+import pygame
+import random
+from pygame import mixer
+
+#initiliserar spelet
+pygame.init()
+
+#Gör så att spelet får ett namn
+pygame.display.set_caption("Insane Bird")
+
+#hur många millisekunder passerar efter en call
+clock = pygame.time.Clock()
+
+#Anger resoulution av längden och bredden
+screenWidth = 750
+screenHeight = 450
+screen = pygame.display.set_mode((screenWidth, screenHeight))
+
+
+#ser till att flappen laddas in i spelet från filer
+image = pygame.image.load("assets/flap.png")
+
+#ger värden för längd och bredd för en image
+image_width = image.get_size()[1]
+image_height = image.get_size()[0]
+
+#Anger decimal koden för de färger som jag kommer använda mig av i koden.
+red = (255, 0, 0)
+white = (255, 255, 255)
+black = (0, 0, 0)
+
+#gör så att man kan quita spelet genom att trycka på röda "x" knappen längst till höger, utan att spelet kraschar
+#gör även att man kan replaya spelet, alltså att man kan köra igen när man dör. Underlättar koden när man komb-
+#inerar båda tillsammans
+def replay_or_quit():
+   for event in pygame.event.get([pygame.KEYUP, pygame.QUIT]):
+       if event.type == pygame.QUIT:
+           pygame.quit() #deaktiverar pygame library
+           quit() #lämnar programmen
+
+       elif event.type == pygame.KEYDOWN:
+           continue
+
+       return event.key
+   return None
+
+#skall visa poängen
+def show_point(current_point):
+   font = pygame.font.Font("pricedown bl.ttf", 35) #vilken text still och hur stor den ska vara
+   text = font.render("Poäng: " + str(current_point), True, black) #ger texten en färg, och visar den
+   screen.blit(text, [20, 5]) #ser till att texten poppar upp i vänstra hörnan
+
+#ger texten som jag ska använda senare värden. T.ex att dem ska vara röd, och att variablen "font" som redan
+#har ett värde ska gälla för alla texter. Gör saker lättare.
+def createText(text, font):
+   textScreen = font.render(text, True, red)
+   return textScreen, textScreen.get_rect()
+
+#ritar blockarna i spelet
+def tubes(x_tube, y_tube, tube_width, tube_height, gap):
+   pygame.draw.rect(screen, black, [x_tube, y_tube, tube_width, tube_height])
+   pygame.draw.rect(screen, black, [x_tube, y_tube + tube_height + gap, tube_width, screenHeight])
+
+
+#när man dör så ska texten komma up på skärmen och vara på mitten
+def gameOver():
+   titletext, titleText = createText("rip!", pygame.font.Font('pricedown bl.ttf', 80))
+   titleText.center = screenWidth / 2, (screenHeight / 2)
+   screen.blit(titletext, titleText)
+
+   typtextScreen, typTextRect = createText("Tryck på vilken knapp som helst för att fortsätta",  pygame.font.Font('pricedown bl.ttf', 30))
+   typTextRect.center = screenWidth / 2, ((screenHeight / 2) + 75) #säger vart texten ska vara, alltså längd mässigt
+   screen.blit(typtextScreen, typTextRect)
+
+#ritar upp texten i spelet, altså skärmen
+   pygame.display.update()
+
+
+   while replay_or_quit() is None:
+       clock.tick(0) #hur snabbt framen ska kunna runna
+
+   main()
+
+#säger flappens startposition
+def main():
+   x = 100
+   y = 200
+   y_move = 0
+
+#gör att variabeln eller lika med screenwidth, variabeln
+   x_tube = screenWidth
+   y_tube = 0
+
+ #ger blocken bredd och längd
+   tube_width = 30
+   tube_height = random.randint(0, screenHeight / 2)
+
+   point = 0
+   game_over = False
+
+   # Game Loop
+   while not game_over:
+
+       for event in pygame.event.get():
+           if event.type == pygame.QUIT:
+               game_over = True
+
+       y = y + y_move
+
+       #Ser till att Flappen kan gå upp
+       if event.type == pygame.KEYDOWN:
+           if event.key == pygame.K_UP:
+               y_move = -3
+
+       # Ser till att Flappen går ner
+       if event.type == pygame.KEYUP:
+           if event.key == pygame.K_DOWN:
+               y_move = 3
+
+
+      #när man trycker på key uo och keydown ska ett ljud höras
+       if event.type == pygame.KEYDOWN:
+           jump_Sound = mixer.Sound("wing.wav")
+           jump_Sound.play(0)
+
+#definerar flappen och ser till att den ska synnas i programmen
+       def flap(x, y, image):
+           screen.blit(image, (x, y)) #ritar upp den
+
+       screen.fill(white) #ser till att bakgrunden får färgen vit
+       show_point(point) #gör så att programmen visar poängen
+       flap(x, y, image)  # ser till att flappen visar sig i programmen
+
+#Gör spelet mer utmanande
+#Avgör hur snabbt flappen ska åka, och hur stor mellanrummet mellan blockarna ska vara när poängen är under 10
+       if point <= 10:
+           tube_move = 8
+           gap = image_height * 4
+
+#Avgör hur snabbt flappen ska åka, och hur stor mellanrummet mellan blockarna ska vara när poängen är över 10
+       if point >= 10:
+           gap = image_height * 3
+
+       #ser till att blocken visar sig
+       if x_tube < (-1 * tube_width):
+           x_tube = screenWidth
+           tube_height = random.randint(0, screenHeight / 2) #ser till att blockarna visar sig i olika längder
+
+       tubes(x_tube, y_tube, tube_width, tube_height, gap)
+       x_tube -= tube_move
+
+       #kollar ifall vi har gått genom blockarna eller inte. Om inte så är blir det en collision, och man dör
+       if x + image_width > x_tube and x < x_tube + tube_width:
+
+        #när man dör ska man ett ljud spelas, och spelet tar slut
+          if y < tube_height or y + image_height > tube_height + gap:
+               dead_Sound = mixer.Sound("gta5.dead.wav")
+               dead_Sound.play(0)
+               gameOver()
+               dead_Sound.stop()
+
+         #ifall man går över skärmens gränser dör man (boundaries)
+          if y > screenHeight - image_height or y < 0:
+              gameOver()
+
+        #ser till att påängen går upp med 1 när man går förbi blocken
+       if x > x_tube + tube_width and x < x_tube + tube_width + image_width / 2:
+           point += 1
+
+       pygame.display.update()
+       clock.tick(85)
+
+
+main()
